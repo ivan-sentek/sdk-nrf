@@ -83,7 +83,7 @@ static void *user_data_alloc(struct bt_gatt_dm *dm,
 	    dm->cur_chunk_len + len > CHUNK_DATA_SIZE) {
 
 		item = k_calloc(1, sizeof(struct data_chunk_item));
-
+		printk("Alloc %08X\n", (uint32_t) item);
 		if (!item) {
 			return NULL;
 		}
@@ -118,6 +118,7 @@ static void svc_attr_memory_release(struct bt_gatt_dm *dm)
 	while (!sys_slist_is_empty(&dm->chunk_list)) {
 		node = sys_slist_get_not_empty(&dm->chunk_list);
 		item = CONTAINER_OF(node, struct data_chunk_item, node);
+		printk("Free %08X\n", (uint32_t) item);
 		k_free(item);
 	}
 
@@ -619,10 +620,30 @@ int bt_gatt_dm_start(struct bt_conn *conn,
 	dm->discover_params.end_handle = 0xffff;
 	dm->discover_params.type = BT_GATT_DISCOVER_PRIMARY;
 
+	static int cnt =0;
+#if 1	 
+	
+    if ( cnt < 10) {		
+		printk("No memory leak run %d\n",cnt);
+		err = bt_gatt_discover(conn, &dm->discover_params);
+	}
+	else 
+	{
+		if ( cnt == 10)
+			printk("==============================================\n");
+		printk("MEMORY LEAK RUN %d\n", cnt);
+		err = -ENOTCONN;
+	}
+	cnt++; 	
+#else
 	err = bt_gatt_discover(conn, &dm->discover_params);
+#endif
+
+	printk("bt_gatt_discover=%d\n",err);
 	if (err) {
 		LOG_ERR("Discover failed, error: %d.", err);
 		atomic_clear_bit(dm->state_flags, STATE_ATTRS_LOCKED);
+		//discovery_complete_error(dm, err); /* uncomment to fix memory leak */
 	}
 
 	return err;

@@ -100,6 +100,8 @@ static void discover_hrs_completed(struct bt_gatt_dm *dm, void *ctx)
 	if (err) {
 		printk("Could not release the discovery data (err %d)\n", err);
 	}
+	
+	bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 }
 
 static void discover_hrs_service_not_found(struct bt_conn *conn, void *ctx)
@@ -233,8 +235,10 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	if (conn == default_conn) {
 
 		err = bt_gatt_dm_start(conn, BT_UUID_HRS, &discover_hrs_cb, NULL);
+		printk("bt_gatt_dm_start=%d\n",err);
 		if (err) {
 			printk("Failed to start discovery (err %d)\n", err);
+			bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 		}
 	}
 }
@@ -281,12 +285,16 @@ void main(void)
 	bt_conn_cb_register(&conn_callbacks);
 
 	scan_init();
+	k_sleep(K_MSEC(1000));
+	while(1) {	
+		printk("starting scan\n");
 
-	err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
-	if (err) {
-		printk("Scanning failed to start (err %d)\n", err);
-		return;
+		err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
+		if (err) {
+			printk("Scanning failed to start (err %d)\n", err);
+			return;
+		}
+
+		printk("Scanning successfully started\n");
 	}
-
-	printk("Scanning successfully started\n");
 }
